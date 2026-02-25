@@ -10,6 +10,16 @@ type AssignmentRow = {
   createdAt?: string
 }
 
+type SubmissionRow = {
+  id: string
+  updatedAt?: string
+  assignment: {
+    id: string
+    title: string
+  }
+  grade?: number | null
+}
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.uid) {
@@ -62,16 +72,7 @@ export default async function DashboardPage() {
       <div className="card" style={{ flex: 1, minWidth: 320 }}>
         <h2>My Submissions</h2>
         <div style={{ display: 'grid', gap: 10 }}>
-          {submissions.map(s => (
-            <div key={s.id} className="card">
-              <b>{s.assignment.title}</b>
-              <div className="small">Updated: {s.updatedAt.toISOString()}</div>
-              <div className="small">Grade: {s.grade ?? '—'}</div>
-              <div className="row" style={{ marginTop: 8 }}>
-                <Link className="button" href={`/sim?assignment=${s.assignmentId}&submission=${s.id}`}>Open submission</Link>
-              </div>
-            </div>
-          ))}
+          {(submissions as SubmissionRow[]).map((s: SubmissionRow) => (
           {submissions.length === 0 && <p className="small">No submissions yet.</p>}
         </div>
       </div>
