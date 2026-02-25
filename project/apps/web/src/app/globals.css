@@ -1,0 +1,14 @@
+:root{color-scheme:light dark;}
+body{font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; margin:0;}
+a{color:inherit;}
+.container{max-width:1100px;margin:0 auto;padding:24px;}
+.card{border:1px solid rgba(127,127,127,.25);border-radius:16px;padding:16px;}
+.row{display:flex;gap:12px;flex-wrap:wrap;}
+.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid rgba(127,127,127,.25);text-decoration:none;cursor:pointer;background:transparent;}
+.button.primary{border-color:rgba(127,127,127,.4);font-weight:600;}
+input,textarea,select{padding:10px 12px;border-radius:12px;border:1px solid rgba(127,127,127,.25);background:transparent;color:inherit;}
+label{display:block;font-size:12px;opacity:.8;margin-bottom:6px;}
+hr{border:none;border-top:1px solid rgba(127,127,127,.25);margin:16px 0;}
+.small{font-size:12px;opacity:.8;}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid rgba(127,127,127,.25);font-size:12px;}
+pre{white-space:pre-wrap;word-break:break-word;}

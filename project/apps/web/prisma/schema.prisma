@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignmentsCreated Assignment[] @relation("AssignmentsCreated")
+  submissions        Submission[]
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  // A snapshot of the machine spec the student must work on (or extend)
+  specJson    Json
+  dueAt       DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String
+  createdBy   User     @relation("AssignmentsCreated", fields: [createdById], references: [id])
+
+  submissions Submission[]
+}
+
+model Submission {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id])
+
+  studentId     String
+  student       User     @relation(fields: [studentId], references: [id])
+
+  // Student's machine spec / solution
+  solutionJson  Json
+
+  grade         Int?
+  feedback      String?
+
+  // optional teacher simulation snapshot / notes
+  teacherRunJson Json?
+
+  @@unique([assignmentId, studentId])
+}
