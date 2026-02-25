@@ -82,38 +82,63 @@ function buildNodes(
   highlightState?: string,
   breakpointStates?: Set<string>,
   callTransitions?: LocalCallTransition[],
-  callHighlight?: Extract<StepAction, { type: 'CALL' }>
+  callHighlight?: Extract<StepAction, { type: "CALL" }>
 ): Node[] {
   const layout = getLayout(spec);
 
-  const positions = spec.states.reduce<Record<string, { x: number; y: number }>>((acc, s, idx) => {
-    acc[s] = layout[s] ?? { x: (idx % 6) * 160, y: Math.floor(idx / 6) * 120 };
-    return acc;
-  }, {});
+  const positions = spec.states.reduce<Record<string, { x: number; y: number }>>(
+    (acc, s, idx) => {
+      acc[s] = layout[s] ?? { x: (idx % 6) * 160, y: Math.floor(idx / 6) * 120 };
+      return acc;
+    },
+    {}
+  );
 
-  const stateNodes = spec.states.map((s) => {
-    const isStart = s === spec.startState;
-    const isAcc = spec.acceptStates.includes(s);
-    const isRej = spec.rejectStates.includes(s);
-    const isHi = !!highlightState && s === highlightState;
-
-    const hasBp = !!breakpointStates?.has(s);
+  const stateNodes: Node[] = spec.states.map((s) => {
+    const isHi = highlightState === s;
+    const hasBp = breakpointStates?.has(s) ?? false;
 
     return {
       id: s,
-      type: 'state',
+      type: "state",
       position: positions[s],
       data: {
         label: s,
-        isStart,
-        isAcc,
-        isRej,
+        isStart: s === spec.startState,
+        isAcc: spec.acceptStates.includes(s),
+        isRej: spec.rejectStates.includes(s),
         isHi,
         hasBp
       }
-    } as Node;
+    };
   });
 
+  const callNodes: Node[] = (callTransitions ?? []).map((ct, idx) => {
+    const base = positions[ct.fromState] ?? { x: 0, y: 0 };
+
+    const isHi =
+      callHighlight &&
+      callHighlight.callerMachineId === spec.id &&
+      callHighlight.callerState === ct.fromState &&
+      tupleToText(callHighlight.read) === tupleToText(ct.read) &&
+      callHighlight.calleeMachineId === ct.callMachineId;
+
+    return {
+      id: `call:${ct.fromState}:${ct.callMachineId}:${idx}`,
+      type: "call",
+      position: { x: base.x + 200, y: base.y + 20 },
+      data: {
+        label: ct.callMachineId,
+        returnState: ct.returnState,
+        read: ct.read,
+        k,
+        isHi
+      }
+    };
+  });
+
+  return [...stateNodes, ...callNodes];
+}
   // Visual CALL edges: represent each call as a small “call” node near the caller state.
   const calls = (callTransitions ?? []).map((ct, idx) => {
     const base = positions[ct.fromState] ?? { x: (idx % 6) * 160, y: Math.floor(idx / 6) * 120 };
@@ -139,30 +164,69 @@ function buildNodes(
 function buildEdges(
   spec: BaseMachine,
   k: number,
-  highlight?: Extract<StepAction, { type: 'STEP' }>,
+  highlight?: Extract<StepAction, { type: "STEP" }> | null,
   callTransitions?: LocalCallTransition[],
-  callHighlight?: Extract<StepAction, { type: 'CALL' }> | null,
-  returnHighlight?: Extract<StepAction, { type: 'RETURN' }> | null
+  callHighlight?: Extract<StepAction, { type: "CALL" }> | null,
+  returnHighlight?: Extract<StepAction, { type: "RETURN" }> | null
 ): Edge[] {
-  const baseEdges = spec.transitions.map((t) => {
-    const isHi = !!(
+  const baseEdges: Edge[] = spec.transitions.map((t) => {
+    const isHi =
       highlight &&
       highlight.machineId === spec.id &&
       highlight.fromState === t.fromState &&
-      tupleToText(highlight.read) === tupleToText(t.read)
-    );
+      tupleToText(highlight.read) === tupleToText(t.read);
 
     return {
       id: edgeId(t.fromState, t.read),
       source: t.fromState,
       target: t.toState,
       label: <EdgeLabel t={t} k={k} />,
-      animated: isHi,
+      animated: !!isHi,
       style: isHi ? { strokeWidth: 2.5 } : undefined,
       markerEnd: { type: MarkerType.ArrowClosed }
-    } as Edge;
+    };
   });
 
+  const callEdges: Edge[] = (callTransitions ?? []).flatMap((ct, idx) => {
+    const callNodeId = `call:${ct.fromState}:${ct.callMachineId}:${idx}`;
+
+    const isCallHi =
+      callHighlight &&
+      callHighlight.callerMachineId === spec.id &&
+      callHighlight.callerState === ct.fromState &&
+      tupleToText(callHighlight.read) === tupleToText(ct.read) &&
+      callHighlight.calleeMachineId === ct.callMachineId;
+
+    const isReturnHi =
+      returnHighlight &&
+      returnHighlight.toMachineId === spec.id &&
+      returnHighlight.returnState === ct.returnState;
+
+    const callEdge: Edge = {
+      id: `ce:${ct.fromState}:${idx}`,
+      source: ct.fromState,
+      target: callNodeId,
+      label: "CALL",
+      animated: !!isCallHi,
+      style: { strokeDasharray: "6 4", strokeWidth: isCallHi ? 2.5 : 1.5 },
+      markerEnd: { type: MarkerType.ArrowClosed }
+    };
+
+    const returnEdge: Edge = {
+      id: `re:${ct.fromState}:${idx}`,
+      source: callNodeId,
+      target: ct.returnState,
+      label: `return → ${ct.returnState}`,
+      animated: !!isReturnHi,
+      style: { strokeDasharray: "4 4", strokeWidth: isReturnHi ? 2.5 : 1.5 },
+      markerEnd: { type: MarkerType.ArrowClosed }
+    };
+
+    return [callEdge, returnEdge];
+  });
+
+  return [...baseEdges, ...callEdges];
+}
   const callEdges: Edge[] = (callTransitions ?? []).flatMap((ct) => {
     const callNodeId = `call:${ct.fromState}::${tupleToText(ct.read)}::${ct.callMachineId}::${ct.returnState}`;
     const isCallHi = !!(
@@ -289,65 +353,26 @@ function StateNode({ data }: { data: any }) {
 
 function CallNode({ data }: { data: any }) {
   const { label, returnState, read, k, isHi } = data;
-  const r = toTuple(read, Number(k ?? 1));
+  const r = toTuple(read, k);
+
   return (
     <div
       style={{
-        minWidth: 120,
-        padding: '8px 10px',
+        minWidth: 130,
+        padding: "10px 12px",
         borderRadius: 14,
-        border: isHi ? '2px dashed rgba(168,85,247,.95)' : '1px dashed rgba(168,85,247,.55)',
-        background: 'rgba(168,85,247,.08)',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas'
+        border: isHi
+          ? "2px dashed rgba(168,85,247,.95)"
+          : "1px dashed rgba(168,85,247,.55)",
+        background: "rgba(168,85,247,.08)",
+        fontFamily: "ui-monospace"
       }}
     >
       <div style={{ fontWeight: 800 }}>CALL {label}</div>
-      <div style={{ fontSize: 11, opacity: 0.9, marginTop: 4 }}>on: {Number(k ?? 1) <= 1 ? r[0] : r.join(' ')}</div>
-      <div style={{ fontSize: 11, opacity: 0.85 }}>ret: {returnState}</div>
-    </div>
-  );
-}
-
-function CallNode({ data }: { data: any }) {
-  const { label, returnState, read, k, isHi } = data;
-  const r = toTuple(read, k).map((x: string) => x || '∅');
-  return (
-    <div
-      style={{
-        minWidth: 110,
-        padding: '10px 12px',
-        borderRadius: 14,
-        border: isHi ? '2px dashed rgba(99,102,241,.9)' : '1px dashed rgba(127,127,127,.45)',
-        background: 'rgba(250,204,21,.10)',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas'
-      }}
-    >
-      <div style={{ fontWeight: 700 }}>CALL {label}</div>
-      <div style={{ fontSize: 11, opacity: 0.9, marginTop: 4, whiteSpace: 'nowrap' }}>on: {k <= 1 ? r[0] : r.join(' ')}</div>
-      <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2, whiteSpace: 'nowrap' }}>ret: {returnState}</div>
-    </div>
-  );
-}
-
-function CallNode({ data }: { data: any }) {
-  const { label, read, returnState, k } = data;
-  const r = toTuple(read, k);
-  return (
-    <div
-      style={{
-        minWidth: 150,
-        padding: '10px 12px',
-        borderRadius: 14,
-        border: '1px dashed rgba(99,102,241,.8)',
-        background: 'rgba(99,102,241,.10)',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas'
-      }}
-    >
-      <div style={{ fontWeight: 800 }}>{label}</div>
-      <div style={{ fontSize: 11, opacity: 0.9, marginTop: 6 }}>
-        on r: {k <= 1 ? r[0] : r.join(' ')}
+      <div style={{ fontSize: 11, marginTop: 4 }}>
+        on: {k <= 1 ? r[0] : r.join(" ")}
       </div>
-      <div style={{ fontSize: 11, opacity: 0.85 }}>return: {returnState}</div>
+      <div style={{ fontSize: 11 }}>ret: {returnState}</div>
     </div>
   );
 }
