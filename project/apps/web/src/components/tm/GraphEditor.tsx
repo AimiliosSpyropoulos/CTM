@@ -107,11 +107,17 @@ function StateNode({ data }: { data: any }) {
 export function GraphEditor({
   spec,
   onChangeSpec,
-  highlight
+  highlight,
+  focusOnHighlight = false,
+  breakpointStates,
+  onToggleBreakpoint
 }: {
   spec: BaseMachine;
   onChangeSpec: (next: BaseMachine) => void;
   highlight: Extract<StepAction, { type: 'STEP' }> | null;
+  focusOnHighlight?: boolean;
+  breakpointStates?: Set<string>;
+  onToggleBreakpoint?: (stateId: string) => void;
 }) {
   const highlightState = useMemo(() => {
     if (!highlight || highlight.machineId !== spec.id) return undefined;
