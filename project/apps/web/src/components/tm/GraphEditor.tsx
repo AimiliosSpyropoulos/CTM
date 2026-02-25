@@ -36,7 +36,7 @@ function edgeId(from: string, read: any) {
 }
 
 function buildNodes(
-  spec: BaseMachine,
+  spec: BaseMachine, 
   highlightState?: string
 ): Node[] {
   return spec.states.map((s, idx) => ({
