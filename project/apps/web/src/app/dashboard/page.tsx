@@ -21,6 +21,17 @@ type SubmissionRow = {
   };
 };
 
+// αυτό είναι το "raw" shape που περιμένουμε από prisma.submission.findMany include assignment
+type SubmissionRaw = {
+  id: string;
+  updatedAt: Date;
+  grade: number | null;
+  assignment: {
+    id: string;
+    title: string;
+  };
+};
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
@@ -54,14 +65,14 @@ export default async function DashboardPage() {
 
   const assignments: AssignmentRow[] = assignmentsRaw;
 
-  const submissionsRaw = await prisma.submission.findMany({
+  const submissionsRaw = (await prisma.submission.findMany({
     where: { studentId: uid },
     include: { assignment: { select: { id: true, title: true } } },
     orderBy: { updatedAt: "desc" },
     take: 20,
-  });
+  })) as unknown as SubmissionRaw[];
 
-  const submissions: SubmissionRow[] = submissionsRaw.map((s) => ({
+  const submissions: SubmissionRow[] = submissionsRaw.map((s: SubmissionRaw) => ({
     id: s.id,
     updatedAt: s.updatedAt,
     grade: s.grade,
@@ -103,9 +114,7 @@ export default async function DashboardPage() {
               <div className="small">
                 Updated: {new Date(s.updatedAt).toLocaleString()}
               </div>
-              <div className="small">
-                Grade: {s.grade ?? "—"}
-              </div>
+              <div className="small">Grade: {s.grade ?? "—"}</div>
               <div style={{ marginTop: 8 }}>
                 <Link
                   className="button"
