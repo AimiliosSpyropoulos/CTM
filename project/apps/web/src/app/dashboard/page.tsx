@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
+type AssignmentRow = {
+  id: string
+  title: string
+  description?: string | null
+  createdAt?: string
+}
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.uid) {
@@ -42,15 +49,12 @@ export default async function DashboardPage() {
         <h2>Assignments</h2>
         <p className="small">Role: {role}</p>
         <div style={{ display: 'grid', gap: 10 }}>
-          {assignments.map(a => (
-            <div key={a.id} className="card">
-              <b>{a.title}</b>
-              <div className="small">{a.description}</div>
-              <div className="row" style={{ marginTop: 8 }}>
-                <Link className="button" href={`/sim?assignment=${a.id}`}>Open in simulator</Link>
-              </div>
-            </div>
-          ))}
+          {(assignments as AssignmentRow[]).map((a: AssignmentRow) => (
+  <div key={a.id} className="card">
+    <b>{a.title}</b>
+    <div className="small">{a.description}</div>
+  </div>
+))}
           {assignments.length === 0 && <p className="small">No assignments yet.</p>}
         </div>
       </div>
