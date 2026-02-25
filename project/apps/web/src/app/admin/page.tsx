@@ -3,6 +3,12 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { hash } from 'bcryptjs';
 
+type AdminUserRow = {
+  id: string
+  email: string
+  role: "STUDENT" | "TEACHER" | "ADMIN"
+}
+
 async function createUserAction(formData: FormData) {
   'use server';
   const session = await getServerSession(authOptions);
@@ -56,13 +62,12 @@ export default async function AdminPage() {
       <div className="card" style={{ flex: 1, minWidth: 340 }}>
         <h2>Latest users</h2>
         <div style={{ display: 'grid', gap: 10 }}>
-          {users.map(u => (
-            <div key={u.id} className="card">
-              <b>{u.email}</b>
-              <div className="small">Role: {u.role}</div>
-              <div className="small">Created: {u.createdAt.toISOString()}</div>
-            </div>
-          ))}
+          {(users as AdminUserRow[]).map((u: AdminUserRow) => (
+  <div key={u.id} className="card">
+    <b>{u.email}</b>
+    <div className="small">Role: {u.role}</div>
+  </div>
+))}
         </div>
       </div>
     </div>
