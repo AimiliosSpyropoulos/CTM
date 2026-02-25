@@ -21,10 +21,10 @@ import 'reactflow/dist/style.css';
 import type { BaseMachine, StepAction } from '@tm-studio/tm-engine';
 
 export type LocalCallTransition = {
-  fromState: string;
+  fromState: string; // state id in THIS machine
   read: any;
   callMachineId: string;
-  returnState: string;
+  returnState: string; // state id in THIS machine
 };
 
 function tupleToText(v: any): string {
@@ -108,16 +108,26 @@ export function GraphEditor({
   spec,
   onChangeSpec,
   highlight,
+  // base-machine UX
   focusOnHighlight = false,
   breakpointStates,
-  onToggleBreakpoint
+  onToggleBreakpoint,
+  // composite-machine visual extras (optional)
+  callTransitions,
+  callHighlight,
+  returnHighlight
 }: {
   spec: BaseMachine;
   onChangeSpec: (next: BaseMachine) => void;
   highlight: Extract<StepAction, { type: 'STEP' }> | null;
+
   focusOnHighlight?: boolean;
   breakpointStates?: Set<string>;
   onToggleBreakpoint?: (stateId: string) => void;
+
+  callTransitions?: LocalCallTransition[];
+  callHighlight?: Extract<StepAction, { type: 'CALL' }> | null;
+  returnHighlight?: Extract<StepAction, { type: 'RETURN' }> | null;
 }) {
   const highlightState = useMemo(() => {
     if (!highlight || highlight.machineId !== spec.id) return undefined;
