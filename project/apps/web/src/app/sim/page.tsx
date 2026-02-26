@@ -25,7 +25,6 @@ function safeJsonParse<T>(text: string): T | null {
 }
 
 export default function SimPage() {
-  export default function SimPage() {
   const params = useSearchParams();
 
   const assignmentId = params?.get('assignment');
